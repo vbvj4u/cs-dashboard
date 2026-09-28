@@ -1,0 +1,57 @@
+name: Terraform
+
+on:
+  pull_request:
+    paths:
+      - "**.tf"
+      - ".github/workflows/terraform.yml"
+  push:
+    branches: [main]
+    paths:
+      - "**.tf"
+      - ".github/workflows/terraform.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  fmt-and-validate:
+    name: fmt & validate
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        working-directory: [".", "bootstrap"]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_wrapper: false
+
+      - name: terraform fmt -check
+        run: terraform fmt -check -recursive
+        working-directory: ${{ matrix.working-directory }}
+
+      # No backend config available in CI, and this job never talks to AWS -
+      # init without a backend is enough to validate syntax/types/references.
+      - name: terraform init (no backend)
+        run: terraform init -backend=false
+        working-directory: ${{ matrix.working-directory }}
+
+      - name: terraform validate
+        run: terraform validate
+        working-directory: ${{ matrix.working-directory }}
+
+  security-scan:
+    name: checkov
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          framework: terraform
+          quiet: true
+          soft_fail: false

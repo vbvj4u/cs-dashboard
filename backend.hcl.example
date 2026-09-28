@@ -1,0 +1,8 @@
+# Copy to backend.hcl (gitignored) and fill in with the outputs from
+# `cd bootstrap && terraform output`. Then run:
+#   terraform init -backend-config=backend.hcl
+
+bucket         = "cs-dashboard-tfstate-XXXXXXXX"
+key            = "cs-dashboard/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "cs-dashboard-tfstate-locks"
