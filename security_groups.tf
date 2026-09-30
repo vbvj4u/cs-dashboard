@@ -1,6 +1,16 @@
+# Auto-detects the caller's public IP at plan/apply time so my_ip_cidr never
+# has to be set by hand; var.my_ip_cidr still wins when explicitly provided.
+data "http" "my_ip" {
+  url = "https://checkip.amazonaws.com"
+}
+
+locals {
+  my_ip_cidr = coalesce(var.my_ip_cidr, "${trimspace(data.http.my_ip.response_body)}/32")
+}
+
 # ECS cluster instance SG (Part 4, plus the 8080/3000 "My IP" rules from Parts 5 & 6)
 resource "aws_security_group" "ecs" {
-  # checkov:skip=CKV_AWS_382: instance sits in a public subnet with no NAT gateway/VPC endpoints (by design, to stay free-tier); full outbound is required to pull images from Docker Hub and reach AWS APIs. Inbound is already restricted to var.my_ip_cidr only.
+  # checkov:skip=CKV_AWS_382: instance sits in a public subnet with no NAT gateway/VPC endpoints (by design, to stay free-tier); full outbound is required to pull images from Docker Hub and reach AWS APIs. Inbound is already restricted to local.my_ip_cidr only.
   name        = "ecs-${var.name}"
   description = "ECS container instance - phpMyAdmin and Metabase"
   vpc_id      = aws_vpc.this.id
@@ -10,7 +20,7 @@ resource "aws_security_group" "ecs" {
     from_port   = 8080
     to_port     = 8080
     protocol    = "tcp"
-    cidr_blocks = [var.my_ip_cidr]
+    cidr_blocks = [local.my_ip_cidr]
   }
 
   ingress {
@@ -18,7 +28,7 @@ resource "aws_security_group" "ecs" {
     from_port   = 3000
     to_port     = 3000
     protocol    = "tcp"
-    cidr_blocks = [var.my_ip_cidr]
+    cidr_blocks = [local.my_ip_cidr]
   }
 
   egress {

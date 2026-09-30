@@ -65,11 +65,12 @@ variable "private_subnet_cidrs" {
 }
 
 variable "my_ip_cidr" {
-  description = "Your public IP in CIDR form (e.g. 203.0.113.10/32) - the only source allowed to reach phpMyAdmin/Metabase."
+  description = "Your public IP in CIDR form (e.g. 203.0.113.10/32) - the only source allowed to reach phpMyAdmin/Metabase. Leave unset to auto-detect via checkip.amazonaws.com at plan/apply time; set explicitly to override."
   type        = string
+  default     = null
 
   validation {
-    condition     = can(cidrhost(var.my_ip_cidr, 0)) && endswith(var.my_ip_cidr, "/32")
+    condition     = var.my_ip_cidr == null || (can(cidrhost(var.my_ip_cidr, 0)) && endswith(var.my_ip_cidr, "/32"))
     error_message = "my_ip_cidr must be a single host CIDR, e.g. 203.0.113.10/32."
   }
 }
@@ -77,7 +78,7 @@ variable "my_ip_cidr" {
 variable "ecs_instance_type" {
   description = "Instance type for the ECS container instance."
   type        = string
-  default     = "t2.micro"
+  default     = "t3.small" # t3.micro (1GiB) can't fit phpMyAdmin + Metabase without Metabase GC-thrashing on startup
 
   validation {
     condition     = can(regex("^[a-z][a-z0-9]*\\.[a-z0-9]+$", var.ecs_instance_type))
@@ -110,13 +111,13 @@ variable "db_username" {
 variable "enable_deletion_protection" {
   description = "Whether to enable RDS deletion protection. Defaults on for production hygiene; set false locally if you need fast destroy/apply iteration."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "log_retention_days" {
   description = "CloudWatch Logs retention for ECS container logs."
   type        = number
-  default     = 7
+  default     = 1
 
   validation {
     condition     = contains([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653, 0], var.log_retention_days)

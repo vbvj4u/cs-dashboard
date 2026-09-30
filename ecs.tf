@@ -143,7 +143,7 @@ resource "aws_ecs_task_definition" "metabase" {
   requires_compatibilities = ["EC2"]
   network_mode             = "bridge"
   cpu                      = "800"
-  memory                   = "800"
+  memory                   = "1700" # t3.small registers ~1938MiB total; phpmyadmin reserves 182MiB, leaving 1756MiB - 1400MiB left ~376MiB non-heap headroom, too tight (JVM was OOM-killed, exit 137, mid-startup during JDBC driver registration)
 
   volume {
     name = "metabase-volume"
@@ -159,7 +159,7 @@ resource "aws_ecs_task_definition" "metabase" {
     name      = "metabase"
     image     = "metabase/metabase:latest"
     essential = true
-    memory    = 800
+    memory    = 1700
     portMappings = [{
       hostPort      = 3000
       containerPort = 3000
@@ -170,10 +170,20 @@ resource "aws_ecs_task_definition" "metabase" {
       containerPath = "/mnt"
       readOnly      = false
     }]
-    environment = [{
-      name  = "MB_DB_FILE"
-      value = "/mnt/metabase.db"
-    }]
+    environment = [
+      {
+        name  = "MB_DB_FILE"
+        value = "/mnt/metabase.db"
+      },
+      {
+        # Default JVM heap is 25% of the container's memory limit, which was too
+        # tight on the previous t3.micro sizing. Cap the heap explicitly so the
+        # JVM's non-heap overhead (metaspace, native buffers) fits under the
+        # 1700MiB container limit without being OOM-killed.
+        name  = "JAVA_OPTS"
+        value = "-Xmx1024m"
+      }
+    ]
     logConfiguration = {
       logDriver = "awslogs"
       options = {
