@@ -54,7 +54,7 @@ resource "aws_db_instance" "mysql" {
   parameter_group_name = "default.mysql8.0"
 
   backup_retention_period    = 1 # AWS Free Plan caps automated backup retention at 1 day
-  copy_tags_to_snapshot      = false
+  copy_tags_to_snapshot      = true
   auto_minor_version_upgrade = true
   deletion_protection        = var.enable_deletion_protection
   skip_final_snapshot        = false

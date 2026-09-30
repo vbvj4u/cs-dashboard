@@ -111,7 +111,7 @@ variable "db_username" {
 variable "enable_deletion_protection" {
   description = "Whether to enable RDS deletion protection. Defaults on for production hygiene; set false locally if you need fast destroy/apply iteration."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "log_retention_days" {
